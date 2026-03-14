@@ -20,6 +20,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
+    "prisma:import:catalog": "ts-node --project tsconfig.json --transpile-only prisma/import-serviceonwheel-catalog.ts",
     "prisma:seed": "ts-node --project tsconfig.json --transpile-only prisma/seed.ts",
     "postinstall": "prisma generate",
     "prepare": "husky"

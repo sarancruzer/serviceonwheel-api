@@ -19,6 +19,6 @@
     "strictPropertyInitialization": false,
     "types": ["node", "jest"]
   },
-  "include": ["src/**/*.ts", "prisma/seed.ts", "test/**/*.ts", "jest.config.ts"],
+  "include": ["src/**/*.ts", "prisma/**/*.ts", "test/**/*.ts", "jest.config.ts"],
   "exclude": ["node_modules", "dist"]
 }
