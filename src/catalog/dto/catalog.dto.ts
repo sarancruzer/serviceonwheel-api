@@ -47,6 +47,67 @@ export class CategoryDto {
   isActive: boolean
 }
 
+export class SubCategoryDto {
+  @ApiProperty({ example: '58e2c60d-35d7-42d5-af74-4efd04a2f649' })
+  id: string
+
+  @ApiProperty({ example: '74f25bc9-4dd0-46fc-8c55-276f9c2d5182' })
+  categoryId: string
+
+  @ApiProperty({ example: 'Annual maintenance contract' })
+  name: string
+
+  @ApiProperty({ example: 'annual-maintenance-contract' })
+  slug: string
+
+  @ApiPropertyOptional({
+    example: 'Routine servicing and upkeep packages for air conditioners.',
+    nullable: true,
+  })
+  description: string | null
+
+  @ApiProperty({ example: 0 })
+  sortOrder: number
+
+  @ApiProperty({ example: true })
+  isActive: boolean
+}
+
+export class ServiceDto {
+  @ApiProperty({ example: '0f8d1c05-3868-4699-bb37-f7e70a37ad76' })
+  id: string
+
+  @ApiProperty({ example: '58e2c60d-35d7-42d5-af74-4efd04a2f649' })
+  subCategoryId: string
+
+  @ApiProperty({ example: 'Split AC' })
+  name: string
+
+  @ApiProperty({ example: 'split-ac' })
+  slug: string
+
+  @ApiPropertyOptional({
+    example: 'Window AC 1600 Add to Cart',
+    nullable: true,
+  })
+  description: string | null
+
+  @ApiPropertyOptional({ example: '1600', nullable: true })
+  priceText: string | null
+
+  @ApiPropertyOptional({ example: 'fixed', nullable: true })
+  priceType: string | null
+
+  @ApiPropertyOptional({ example: '1600.00', nullable: true })
+  priceValue: string | null
+
+  @ApiProperty({ example: 0 })
+  sortOrder: number
+
+  @ApiProperty({ example: true })
+  isActive: boolean
+}
+
 export class SubServiceDto {
   @ApiProperty({ example: '86d5324a-908e-42d6-837c-467f90e5880e' })
   id: string

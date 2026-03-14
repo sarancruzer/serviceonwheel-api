@@ -192,6 +192,18 @@ export class CatalogService {
     return this.catalogRepository.listCategories()
   }
 
+  listImportedCategories() {
+    return this.catalogRepository.listImportedCategories()
+  }
+
+  listImportedSubCategories(categoryId: string) {
+    return this.catalogRepository.listImportedSubCategories(categoryId)
+  }
+
+  listImportedServices(subCategoryId: string) {
+    return this.catalogRepository.listImportedServices(subCategoryId)
+  }
+
   async createCategory(payload: CreateCategoryDto, adminId: string) {
     const created = await this.catalogRepository.createCategory({
       name: payload.name.trim(),

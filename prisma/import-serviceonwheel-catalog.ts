@@ -45,6 +45,14 @@ type ImportedSubServiceSeed = {
   name: string
 }
 
+type ImportedServiceSeed = {
+  description: string | null
+  name: string
+  priceText: string | null
+  priceType: string | null
+  priceValue: string | null
+}
+
 type PricingSummary = {
   baseLaborPrice: string | null
   notes: string | null
@@ -411,6 +419,35 @@ function buildImportedSubServices(category: CrawlCategory): ImportedSubServiceSe
   ]
 }
 
+function buildImportedServices(subService: ImportedSubServiceSeed): ImportedServiceSeed[] {
+  const structuredItems = subService.items
+    .map((item) => ({
+      description: cleanDescription(item.description),
+      name: normalizeText(item.name),
+      priceText: normalizeText(item.priceText) || null,
+      priceType: normalizeText(item.priceType).toLowerCase() || null,
+      priceValue:
+        typeof item.priceValue === 'number' && Number.isFinite(item.priceValue)
+          ? formatPrice(item.priceValue)
+          : null,
+    }))
+    .filter((item) => item.name)
+
+  if (structuredItems.length > 0) {
+    return structuredItems
+  }
+
+  return [
+    {
+      description: subService.description,
+      name: subService.name,
+      priceText: null,
+      priceType: null,
+      priceValue: null,
+    },
+  ]
+}
+
 function formatPrice(value: number) {
   return value.toFixed(2)
 }
@@ -499,6 +536,8 @@ async function main() {
   const stats = {
     categoriesCreatedOrUpdated: 0,
     pricingRulesCreatedOrUpdated: 0,
+    servicesCreatedOrUpdated: 0,
+    subCategoriesCreatedOrUpdated: 0,
     subServicesCreatedOrUpdated: 0,
   }
 
@@ -543,7 +582,7 @@ async function main() {
     const importedSubServices = buildImportedSubServices(categoryPayload)
     const seenNames = new Set<string>()
 
-    for (const importedSubService of importedSubServices) {
+    for (const [subCategoryIndex, importedSubService] of importedSubServices.entries()) {
       const serviceName = normalizeText(importedSubService.name)
       const serviceKey = normalizeKey(serviceName)
 
@@ -552,6 +591,76 @@ async function main() {
       }
 
       seenNames.add(serviceKey)
+
+      const subCategory = await prisma.subCategory.upsert({
+        where: {
+          categoryId_slug: {
+            categoryId: category.id,
+            slug: slugify(serviceName),
+          },
+        },
+        update: {
+          description: importedSubService.description,
+          isActive: true,
+          name: serviceName,
+          sortOrder: subCategoryIndex,
+        },
+        create: {
+          categoryId: category.id,
+          description: importedSubService.description,
+          isActive: true,
+          name: serviceName,
+          slug: slugify(serviceName),
+          sortOrder: subCategoryIndex,
+        },
+      })
+
+      stats.subCategoriesCreatedOrUpdated += 1
+
+      const importedServices = buildImportedServices(importedSubService)
+      const seenServiceNames = new Set<string>()
+
+      for (const [serviceIndex, importedService] of importedServices.entries()) {
+        const importedServiceName = normalizeText(importedService.name)
+        const importedServiceKey = normalizeKey(importedServiceName)
+
+        if (!importedServiceName || seenServiceNames.has(importedServiceKey)) {
+          continue
+        }
+
+        seenServiceNames.add(importedServiceKey)
+
+        await prisma.service.upsert({
+          where: {
+            subCategoryId_slug: {
+              slug: slugify(importedServiceName),
+              subCategoryId: subCategory.id,
+            },
+          },
+          update: {
+            description: importedService.description,
+            isActive: true,
+            name: importedServiceName,
+            priceText: importedService.priceText,
+            priceType: importedService.priceType,
+            priceValue: importedService.priceValue,
+            sortOrder: serviceIndex,
+          },
+          create: {
+            description: importedService.description,
+            isActive: true,
+            name: importedServiceName,
+            priceText: importedService.priceText,
+            priceType: importedService.priceType,
+            priceValue: importedService.priceValue,
+            slug: slugify(importedServiceName),
+            sortOrder: serviceIndex,
+            subCategoryId: subCategory.id,
+          },
+        })
+
+        stats.servicesCreatedOrUpdated += 1
+      }
 
       const subService = await prisma.subService.upsert({
         where: {

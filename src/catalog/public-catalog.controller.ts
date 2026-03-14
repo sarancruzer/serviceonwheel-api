@@ -8,6 +8,8 @@ import {
   PublicServiceSearchQueryDto,
   PublicServiceSearchResponseDto,
   PublicPricingRuleQueryDto,
+  ServiceDto,
+  SubCategoryDto,
   SubServiceDto,
 } from './dto/catalog.dto'
 
@@ -45,6 +47,27 @@ export class PublicCatalogController {
     @Param('categorySlug') categorySlug: string,
   ) {
     return this.catalogService.listPublicSubServices(citySlug, categorySlug)
+  }
+
+  @Get('catalog/categories')
+  @ApiOperation({ summary: 'List imported catalog categories' })
+  @ApiOkResponse({ type: CategoryDto, isArray: true })
+  listImportedCategories() {
+    return this.catalogService.listImportedCategories()
+  }
+
+  @Get('catalog/categories/:categoryId/subcategories')
+  @ApiOperation({ summary: 'List imported subcategories for a category' })
+  @ApiOkResponse({ type: SubCategoryDto, isArray: true })
+  listImportedSubCategories(@Param('categoryId') categoryId: string) {
+    return this.catalogService.listImportedSubCategories(categoryId)
+  }
+
+  @Get('catalog/subcategories/:subCategoryId/services')
+  @ApiOperation({ summary: 'List imported services for a subcategory' })
+  @ApiOkResponse({ type: ServiceDto, isArray: true })
+  listImportedServices(@Param('subCategoryId') subCategoryId: string) {
+    return this.catalogService.listImportedServices(subCategoryId)
   }
 
   @Get('service-search')

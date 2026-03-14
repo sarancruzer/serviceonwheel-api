@@ -115,13 +115,48 @@ model City {
 }
 
 model Category {
-  id          String       @id @default(uuid())
+  id            String        @id @default(uuid())
+  name          String
+  slug          String        @unique
+  iconKey       String?
+  isActive      Boolean       @default(true)
+  bookings      Booking[]
+  subCategories SubCategory[]
+  subServices   SubService[]
+}
+
+model SubCategory {
+  id          String    @id @default(uuid())
+  categoryId  String
   name        String
-  slug        String       @unique
-  iconKey     String?
-  isActive    Boolean      @default(true)
-  bookings    Booking[]
-  subServices SubService[]
+  slug        String
+  description String?
+  sortOrder   Int       @default(0)
+  isActive    Boolean   @default(true)
+  category    Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  services    Service[]
+
+  @@unique([categoryId, slug])
+  @@index([categoryId, sortOrder, name])
+  @@map("SubCategory")
+}
+
+model Service {
+  id            String      @id @default(uuid())
+  subCategoryId String
+  name          String
+  slug          String
+  description   String?
+  priceText     String?
+  priceType     String?
+  priceValue    Decimal?    @db.Decimal(10, 2)
+  sortOrder     Int         @default(0)
+  isActive      Boolean     @default(true)
+  subCategory   SubCategory @relation(fields: [subCategoryId], references: [id], onDelete: Cascade)
+
+  @@unique([subCategoryId, slug])
+  @@index([subCategoryId, sortOrder, name])
+  @@map("Services")
 }
 
 model SubService {

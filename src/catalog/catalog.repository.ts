@@ -17,6 +17,29 @@ const categorySummarySelect = {
   slug: true,
 } satisfies Prisma.CategorySelect
 
+const subCategorySummarySelect = {
+  categoryId: true,
+  description: true,
+  id: true,
+  isActive: true,
+  name: true,
+  slug: true,
+  sortOrder: true,
+} satisfies Prisma.SubCategorySelect
+
+const serviceSummarySelect = {
+  description: true,
+  id: true,
+  isActive: true,
+  name: true,
+  priceText: true,
+  priceType: true,
+  priceValue: true,
+  slug: true,
+  sortOrder: true,
+  subCategoryId: true,
+} satisfies Prisma.ServiceSelect
+
 const subServiceSummarySelect = {
   categoryId: true,
   id: true,
@@ -224,6 +247,62 @@ export class CatalogRepository {
   listCategories() {
     return this.prisma.category.findMany({
       orderBy: { name: 'asc' },
+    })
+  }
+
+  listImportedCategories() {
+    return this.prisma.category.findMany({
+      where: {
+        isActive: true,
+        subCategories: {
+          some: {
+            isActive: true,
+            services: {
+              some: {
+                isActive: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { name: 'asc' },
+      select: categorySummarySelect,
+    })
+  }
+
+  listImportedSubCategories(categoryId: string) {
+    return this.prisma.subCategory.findMany({
+      where: {
+        categoryId,
+        isActive: true,
+        category: {
+          isActive: true,
+        },
+        services: {
+          some: {
+            isActive: true,
+          },
+        },
+      },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+      select: subCategorySummarySelect,
+    })
+  }
+
+  listImportedServices(subCategoryId: string) {
+    return this.prisma.service.findMany({
+      where: {
+        isActive: true,
+        subCategoryId,
+        subCategory: {
+          isActive: true,
+          category: {
+            isActive: true,
+          },
+        },
+      },
+      orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+      select: serviceSummarySelect,
     })
   }
 
