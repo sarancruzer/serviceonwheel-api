@@ -1,0 +1,370 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  String               @id @default(uuid())
+  email               String               @unique
+  passwordHash        String
+  name                String
+  phone               String?
+  isActive            Boolean              @default(true)
+  failedLoginCount    Int                  @default(0)
+  lockedUntil         DateTime?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  lastLoginAt         DateTime?
+  addresses           Address[]
+  auditLogs           AuditLog[]
+  bookings            Booking[]            @relation("CustomerBookings")
+  passwordResetTokens PasswordResetToken[]
+  refreshTokens       RefreshToken[]
+  roles               UserRole[]
+  vendorProfile       VendorProfile?
+}
+
+model UserRole {
+  id     String @id @default(uuid())
+  userId String
+  role   Role
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, role])
+  @@index([role])
+}
+
+model RefreshToken {
+  id                  String    @id @default(uuid())
+  userId              String
+  tokenHash           String    @unique
+  createdAt           DateTime  @default(now())
+  expiresAt           DateTime
+  revokedAt           DateTime?
+  replacedByTokenHash String?
+  userAgent           String?
+  ipAddress           String?
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  usedAt    DateTime?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model VendorProfile {
+  id           String              @id @default(uuid())
+  userId       String              @unique
+  kycStatus    KycStatus           @default(PENDING)
+  isActive     Boolean             @default(true)
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  assignments  BookingAssignment[]
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  serviceAreas VendorServiceArea[]
+  skills       VendorSkill[]
+}
+
+model VendorServiceArea {
+  id       String        @id @default(uuid())
+  vendorId String
+  cityId   String
+  pincode  String
+  areaName String?
+  city     City          @relation(fields: [cityId], references: [id])
+  vendor   VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@unique([vendorId, cityId, pincode])
+  @@index([cityId, pincode])
+}
+
+model VendorSkill {
+  id           String        @id @default(uuid())
+  vendorId     String
+  subServiceId String
+  isActive     Boolean       @default(true)
+  subService   SubService    @relation(fields: [subServiceId], references: [id])
+  vendor       VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@unique([vendorId, subServiceId])
+  @@index([subServiceId])
+}
+
+model City {
+  id           String              @id @default(uuid())
+  name         String
+  slug         String              @unique
+  isActive     Boolean             @default(true)
+  addresses    Address[]
+  bookings     Booking[]
+  pricingRules PricingRule[]
+  serviceAreas VendorServiceArea[]
+}
+
+model Category {
+  id          String       @id @default(uuid())
+  name        String
+  slug        String       @unique
+  iconKey     String?
+  isActive    Boolean      @default(true)
+  bookings    Booking[]
+  subServices SubService[]
+}
+
+model SubService {
+  id             String        @id @default(uuid())
+  categoryId     String
+  name           String
+  slug           String        @unique
+  isActive       Boolean       @default(true)
+  seoTitle       String?
+  seoDescription String?
+  bookings       Booking[]
+  pricingRules   PricingRule[]
+  category       Category      @relation(fields: [categoryId], references: [id])
+  vendorSkills   VendorSkill[]
+
+  @@unique([categoryId, slug])
+  @@index([categoryId])
+}
+
+model PricingRule {
+  id             String     @id @default(uuid())
+  cityId         String
+  subServiceId   String
+  visitFee       Decimal    @db.Decimal(10, 2)
+  priceType      PriceType
+  baseLaborPrice Decimal?   @db.Decimal(10, 2)
+  notes          String?
+  isActive       Boolean    @default(true)
+  city           City       @relation(fields: [cityId], references: [id])
+  subService     SubService @relation(fields: [subServiceId], references: [id])
+
+  @@unique([cityId, subServiceId])
+}
+
+model Address {
+  id        String    @id @default(uuid())
+  userId    String?
+  cityId    String
+  label     String?
+  line1     String
+  landmark  String?
+  pincode   String
+  lat       Decimal?  @db.Decimal(10, 7)
+  lng       Decimal?  @db.Decimal(10, 7)
+  isDefault Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  city      City      @relation(fields: [cityId], references: [id])
+  user      User?     @relation(fields: [userId], references: [id])
+  bookings  Booking[]
+
+  @@index([userId])
+  @@index([cityId, pincode])
+}
+
+model Booking {
+  id                       String              @id @default(uuid())
+  bookingCode              String              @unique
+  cityId                   String
+  categoryId               String
+  subServiceId             String
+  customerUserId           String?
+  guestName                String?
+  guestPhone               String?
+  addressId                String
+  scheduledDate            DateTime
+  timeWindow               String
+  status                   BookingStatus       @default(NEW)
+  visitFee                 Decimal             @db.Decimal(10, 2)
+  estimatedLabor           Decimal?            @db.Decimal(10, 2)
+  finalLabor               Decimal?            @db.Decimal(10, 2)
+  commissionRatePct        Int
+  commissionAmount         Decimal?            @db.Decimal(10, 2)
+  payoutAmount             Decimal?            @db.Decimal(10, 2)
+  partsNote                String?
+  paymentModeUsed          PaymentMode?
+  settlementStatus         SettlementStatus    @default(NA)
+  settlementWeek           String?
+  settlementRef            String?
+  settlementDate           DateTime?
+  notes                    String?
+  createdAt                DateTime            @default(now())
+  updatedAt                DateTime            @updatedAt
+  completedAt              DateTime?
+  cancelledAt              DateTime?
+  cancelReason             String?
+  cancelledBy              CancelledBy?
+  completionOtpCode        String?
+  completionOtpGeneratedAt DateTime?
+  completionOtpVerifiedAt  DateTime?
+  address                  Address             @relation(fields: [addressId], references: [id])
+  category                 Category            @relation(fields: [categoryId], references: [id])
+  city                     City                @relation(fields: [cityId], references: [id])
+  customerUser             User?               @relation("CustomerBookings", fields: [customerUserId], references: [id])
+  subService               SubService          @relation(fields: [subServiceId], references: [id])
+  assignments              BookingAssignment[]
+  photos                   BookingPhoto[]
+  review                   Review?
+
+  @@index([status, createdAt])
+  @@index([customerUserId, createdAt])
+  @@index([completedAt])
+  @@index([settlementStatus, settlementWeek])
+}
+
+model BookingAssignment {
+  id               String           @id @default(uuid())
+  bookingId        String
+  vendorId         String
+  assignedAt       DateTime         @default(now())
+  acceptedAt       DateTime?
+  completedAt      DateTime?
+  assignmentStatus AssignmentStatus @default(ASSIGNED)
+  booking          Booking          @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  vendor           VendorProfile    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([vendorId, assignedAt])
+  @@index([bookingId, assignedAt])
+}
+
+model BookingPhoto {
+  id        String    @id @default(uuid())
+  bookingId String
+  s3Key     String
+  kind      PhotoKind
+  createdAt DateTime  @default(now())
+  booking   Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@unique([bookingId, s3Key])
+  @@index([bookingId, createdAt])
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  bookingId String   @unique
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+}
+
+model PartnerLead {
+  id                   String   @id @default(uuid())
+  name                 String
+  phone                String
+  categoriesInterested String[]
+  pincodes             String[]
+  message              String?
+  createdAt            DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id          String         @id @default(uuid())
+  actorType   AuditActorType
+  actorUserId String
+  action      String
+  entityType  String
+  entityId    String
+  beforeJson  Json?
+  afterJson   Json?
+  requestId   String?
+  createdAt   DateTime       @default(now())
+  actorUser   User           @relation(fields: [actorUserId], references: [id])
+
+  @@index([entityType, entityId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([createdAt])
+}
+
+model Faq {
+  id        String       @id
+  scopeType FaqScopeType
+  scopeId   String
+  question  String
+  answer    String
+  sortOrder Int          @default(0)
+  isActive  Boolean      @default(true)
+}
+
+enum Role {
+  CUSTOMER
+  VENDOR
+  ADMIN
+}
+
+enum KycStatus {
+  PENDING
+  VERIFIED
+}
+
+enum PriceType {
+  FIXED
+  INSPECTION_QUOTE
+}
+
+enum BookingStatus {
+  NEW
+  CONFIRMED
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentMode {
+  CASH
+  UPI
+}
+
+enum SettlementStatus {
+  UNSETTLED
+  SETTLED
+  NA
+}
+
+enum AssignmentStatus {
+  ASSIGNED
+  ACCEPTED
+  REJECTED
+  REMOVED
+}
+
+enum FaqScopeType {
+  CITY
+  CATEGORY
+  SUBSERVICE
+}
+
+enum AuditActorType {
+  CUSTOMER
+  VENDOR
+  ADMIN
+}
+
+enum CancelledBy {
+  ADMIN
+  CUSTOMER
+}
+
+enum PhotoKind {
+  PROBLEM
+  BEFORE
+  AFTER
+}
